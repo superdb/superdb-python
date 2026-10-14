@@ -12,7 +12,7 @@ dependencies, and start a local SuperDB service:
 python3 -m venv .venv
 source .venv/bin/activate
 pip3 install -e '.[test]'
-super db -db $(mktemp -d) serve
+super db serve $(mktemp -d)
 ```
 
 Then in another shell (with the virtual environment activated):
