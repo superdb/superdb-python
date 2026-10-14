@@ -32,16 +32,16 @@ except requests.exceptions.ConnectionError:
 def test_authenticated_client_can_query():
     client = Client()
     name = 'test_auth_' + uuid.uuid4().hex[:8]
-    client.create_pool(name)
+    client.create_table(name)
     try:
         client.load(name, b'{a: 1}', mime_type='application/x-sup')
         assert list(client.query(f'from {name}')) == [{'a': 1}]
     finally:
-        client.delete_pool(name)
+        client.delete_table(name)
 
 
 def test_unauthenticated_client_raises_request_error():
     # A client with no credentials (config_dir='') should be rejected by an
     # auth-enabled service on any request.
     with pytest.raises(RequestError):
-        Client(config_dir='').create_pool('x')
+        Client(config_dir='').create_table('x')

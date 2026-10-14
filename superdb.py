@@ -32,21 +32,21 @@ class Client():
             return creds['services'][self.base_url]['access']
         return None
 
-    def create_pool(self, name, layout={'order': 'desc', 'keys': [['ts']]},
-                    thresh=0):
-        r = self.session.post(self.base_url + '/pool', json={
+    def create_table(self, name, layout={'order': 'desc', 'keys': [['ts']]},
+                     thresh=0):
+        r = self.session.post(self.base_url + '/table', json={
             'name': name,
             'layout': layout,
             'thresh': thresh,
         })
         self.__raise_for_status(r)
 
-    def load(self, pool_name_or_id, data, branch_name='main',
+    def load(self, table_name_or_id, data, branch_name='main',
              commit_author=getpass.getuser(), commit_body='',
              mime_type=None):
-        pool = urllib.parse.quote(pool_name_or_id, safe='')
+        table = urllib.parse.quote(table_name_or_id, safe='')
         branch = urllib.parse.quote(branch_name, safe='')
-        url = self.base_url + '/pool/' + pool + '/branch/' + branch
+        url = self.base_url + '/table/' + table + '/branch/' + branch
         commit_message = {'author': commit_author, 'body': commit_body}
         headers = {'SuperDB-Commit': json.dumps(commit_message)}
         if mime_type is not None:
@@ -54,9 +54,9 @@ class Client():
         r = self.session.post(url, headers=headers, data=data)
         self.__raise_for_status(r)
 
-    def delete_pool(self, pool_name_or_id):
-        pool = urllib.parse.quote(pool_name_or_id, safe='')
-        r = self.session.delete(self.base_url + '/pool/' + pool)
+    def delete_table(self, table_name_or_id):
+        table = urllib.parse.quote(table_name_or_id, safe='')
+        r = self.session.delete(self.base_url + '/table/' + table)
         self.__raise_for_status(r)
 
     def query(self, query, safe=True):
@@ -96,7 +96,7 @@ class Client():
         try:
             reader = pa.ipc.open_stream(r.raw)
         except pa.lib.ArrowInvalid as e:
-            # An empty response body (no schema) means either the pool has no
+            # An empty response body (no schema) means either the table has no
             # data or the data contains a type the Arrow encoder can't handle
             # (e.g. an empty record).  Both cases are indistinguishable at the
             # HTTP level when streaming, so both are silently treated as an

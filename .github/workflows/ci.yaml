@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       super_ref:
-        description: 'brimdata/super branch, tag, or SHA to test against'
+        description: 'superdb/super branch, tag, or SHA to test against'
         default: main
         required: false
   repository_dispatch:
@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
-          repository: brimdata/super
+          repository: superdb/super
           ref: ${{ inputs.super_ref || 'main' }}
           path: super
       - uses: actions/setup-go@v5
@@ -33,7 +33,7 @@ jobs:
         working-directory: super
       - name: Start super db serve (no auth)
         run: |
-          $GITHUB_WORKSPACE/bin/super db -db $(mktemp -d) serve -l localhost:9867 &
+          $GITHUB_WORKSPACE/bin/super db serve -l localhost:9867 $(mktemp -d) &
           for i in $(seq 1 30); do
             curl -sf http://localhost:9867/status 2>/dev/null && break
             sleep 1
@@ -51,7 +51,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
-          repository: brimdata/super
+          repository: superdb/super
           ref: ${{ inputs.super_ref || 'main' }}
           path: super
       - uses: actions/setup-go@v5
@@ -65,12 +65,13 @@ jobs:
         working-directory: super
       - name: Start super db serve (with auth)
         run: |
-          $GITHUB_WORKSPACE/bin/super db -db $(mktemp -d) serve -l localhost:9867 \
+          $GITHUB_WORKSPACE/bin/super db serve -l localhost:9867 \
             -auth.enabled=t \
             -auth.audience=a \
             -auth.clientid=c \
             -auth.domain=d \
-            -auth.jwkspath=$GITHUB_WORKSPACE/super/service/testdata/auth-public-jwks.json &
+            -auth.jwkspath=$GITHUB_WORKSPACE/super/service/testdata/auth-public-jwks.json \
+            $(mktemp -d) &
           for i in $(seq 1 30); do
             curl -sf http://localhost:9867/status 2>/dev/null && break
             sleep 1
@@ -81,7 +82,7 @@ jobs:
             -audience a -domain d -keyid testkey \
             -privatekeyfile $GITHUB_WORKSPACE/super/service/testdata/auth-private-key \
             -tenantid t -userid u)
-          $GITHUB_WORKSPACE/bin/super db auth store -access "$token" -db http://localhost:9867
+          $GITHUB_WORKSPACE/bin/super db attach -q -token "$token" http://localhost:9867
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'

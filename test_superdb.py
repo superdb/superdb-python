@@ -7,7 +7,7 @@ variable to point at a different instance. Tests are automatically skipped if
 the service is not reachable.
 
 Start a local instance with:
-    super db serve
+    super db serve $(mktemp -d)
 """
 
 import datetime
@@ -75,17 +75,17 @@ def client():
 
 
 @pytest.fixture(scope='session')
-def pool(client):
+def table(client):
     name = 'test_types_' + uuid.uuid4().hex[:8]
-    client.create_pool(name)
+    client.create_table(name)
     client.load(name, _SUP_ALL_TYPES.encode(), mime_type='application/x-sup')
     yield name
-    client.delete_pool(name)
+    client.delete_table(name)
 
 
 @pytest.fixture(scope='session')
-def record(client, pool):
-    results = list(client.query(f'from {pool}'))
+def record(client, table):
+    results = list(client.query(f'from {table}'))
     assert len(results) == 1
     return results[0]
 
@@ -235,7 +235,7 @@ def test_multiple_record_types_raises_mixed_types_error(client):
     # With safe=True (default), query() runs a pre-flight check and raises
     # MixedTypesError before requesting Arrow data, preventing silent truncation.
     name = 'test_multi_' + uuid.uuid4().hex[:8]
-    client.create_pool(name)
+    client.create_table(name)
     try:
         client.load(name, b'{a: 1}\n{b: "hello"}',
                     mime_type='application/x-sup')
@@ -243,7 +243,7 @@ def test_multiple_record_types_raises_mixed_types_error(client):
             list(client.query(f'from {name}'))
         assert exc_info.value.type_count == 2
     finally:
-        client.delete_pool(name)
+        client.delete_table(name)
 
 
 def test_multiple_record_types_safe_false_returns_partial(client):
@@ -251,40 +251,40 @@ def test_multiple_record_types_safe_false_returns_partial(client):
     # silently truncates at the first schema change, so callers that opt out
     # must know their data is homogeneous.
     name = 'test_multi_unsafe_' + uuid.uuid4().hex[:8]
-    client.create_pool(name)
+    client.create_table(name)
     try:
         client.load(name, b'{a: 1}\n{b: "hello"}',
                     mime_type='application/x-sup')
         results = list(client.query(f'from {name}', safe=False))
         assert len(results) < 2
     finally:
-        client.delete_pool(name)
+        client.delete_table(name)
 
 
 def test_non_record_values_raises_non_record_error(client):
     # Data loaded in line format is stored as top-level strings, not records.
     # With safe=True (default), query() detects this and raises NonRecordError.
     name = 'test_nonrec_' + uuid.uuid4().hex[:8]
-    client.create_pool(name)
+    client.create_table(name)
     try:
         client.load(name, b'hello\nworld', mime_type='application/x-line')
         with pytest.raises(NonRecordError) as exc_info:
             list(client.query(f'from {name}'))
         assert exc_info.value.kinds == ['primitive']
     finally:
-        client.delete_pool(name)
+        client.delete_table(name)
 
 
 def test_non_record_values_safe_false_returns_empty(client):
     # With safe=False, non-record values are not detected.  Arrow cannot encode
     # non-record top-level values, so the server returns an empty stream.
     name = 'test_nonrec_unsafe_' + uuid.uuid4().hex[:8]
-    client.create_pool(name)
+    client.create_table(name)
     try:
         client.load(name, b'hello\nworld', mime_type='application/x-line')
         assert list(client.query(f'from {name}', safe=False)) == []
     finally:
-        client.delete_pool(name)
+        client.delete_table(name)
 
 
 def test_empty_record_returns_no_results(client):
@@ -292,25 +292,25 @@ def test_empty_record_returns_no_results(client):
     # empty stream rather than an error, so the client silently returns no
     # results.  See the README for details.
     name = 'test_empty_' + uuid.uuid4().hex[:8]
-    client.create_pool(name)
+    client.create_table(name)
     try:
         client.load(name, b'{}', mime_type='application/x-sup')
         assert list(client.query(f'from {name}')) == []
     finally:
-        client.delete_pool(name)
+        client.delete_table(name)
 
 
-def test_duplicate_pool_raises_request_error(client):
+def test_duplicate_table_raises_request_error(client):
     name = 'test_dup_' + uuid.uuid4().hex[:8]
-    client.create_pool(name)
+    client.create_table(name)
     try:
         with pytest.raises(RequestError):
-            client.create_pool(name)
+            client.create_table(name)
     finally:
-        client.delete_pool(name)
+        client.delete_table(name)
 
 
-def test_query_nonexistent_pool_raises_request_error(client):
-    name = 'test_nopool_' + uuid.uuid4().hex[:8]
+def test_query_nonexistent_table_raises_request_error(client):
+    name = 'test_notable_' + uuid.uuid4().hex[:8]
     with pytest.raises(RequestError):
         list(client.query(f'from {name}'))
